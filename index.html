@@ -642,53 +642,45 @@ function callApi(action, payload) {
         case 'exportCsv':           gsr.exportToCsv(JSON.stringify(payload.filter || {})); break;
         default: reject(new Error('Action tidak dikenali: ' + action));
       }
-    } else if (action === 'checkLogin') {
-      // ── JSONP — elak isu CORS pada GAS untuk checkLogin ──
-      var cbName = 'jsonp_cb_' + Date.now() + '_' + Math.floor(Math.random()*100000);
-      var script = document.createElement('script');
-      var cleanup = function() {
-        delete window[cbName];
-        if (script.parentNode) script.parentNode.removeChild(script);
-      };
-      var timeoutId = setTimeout(function() {
-        cleanup();
-        reject(new Error('Permintaan log masuk tamat tempoh (timeout).'));
-      }, 15000);
-
-      window[cbName] = function(data) {
-        clearTimeout(timeoutId);
-        cleanup();
-        resolve(data);
-      };
-      script.onerror = function() {
-        clearTimeout(timeoutId);
-        cleanup();
-        reject(new Error('Gagal sambung ke server log masuk.'));
-      };
-
-      var url = EXEC_URL + '?action=checkLogin'
-        + '&username=' + encodeURIComponent(payload.username || '')
-        + '&password=' + encodeURIComponent(payload.password || '')
-        + '&callback=' + cbName;
-      script.src = url;
-      document.head.appendChild(script);
     } else {
-      // ── Mod PWA (fetch ke /exec) ──
-      var isGet = (action === 'getAllData' || action === 'getAllFeedback' || action === 'exportCsv');
+      // ── Mod PWA: GET actions guna JSONP (elak isu CORS GAS yang inconsistent) ──
+      var GET_ACTIONS = ['getAllData', 'getAllFeedback', 'exportCsv', 'checkLogin'];
 
-      if (isGet) {
-        var url = EXEC_URL + '?action=' + action;
+      if (GET_ACTIONS.indexOf(action) !== -1) {
+        var cbName = 'jsonp_cb_' + Date.now() + '_' + Math.floor(Math.random()*100000);
+        var script = document.createElement('script');
+        var cleanup = function() {
+          delete window[cbName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+        };
+        var timeoutId = setTimeout(function() {
+          cleanup();
+          reject(new Error('Permintaan tamat tempoh (timeout). Sila cuba lagi.'));
+        }, 30000);
+
+        window[cbName] = function(data) {
+          clearTimeout(timeoutId);
+          cleanup();
+          resolve(data);
+        };
+        script.onerror = function() {
+          clearTimeout(timeoutId);
+          cleanup();
+          reject(new Error('Gagal sambung ke server.'));
+        };
+
+        var url = EXEC_URL + '?action=' + action + '&callback=' + cbName;
+        if (action === 'checkLogin') {
+          url += '&username=' + encodeURIComponent(payload.username || '')
+               + '&password=' + encodeURIComponent(payload.password || '');
+        }
         if (action === 'exportCsv' && payload.filter) {
           url += '&filter=' + encodeURIComponent(JSON.stringify(payload.filter));
         }
-        fetch(url)
-          .then(function(res) {
-            if (action === 'exportCsv') return res.text();
-            return res.json();
-          })
-          .then(resolve)
-          .catch(reject);
+        script.src = url;
+        document.head.appendChild(script);
       } else {
+        // ── POST actions (updateStatus, updateStatusBatch) ──
         fetch(EXEC_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
