@@ -105,6 +105,94 @@ function getOrCreateColumn(sheet, colName) {
 }
 
 // ------------------------------------------------------------------
+// HELPER: Cari index kolum ikut regex pattern — return -1 kalau tak jumpa
+// ------------------------------------------------------------------
+function findColumnIndex(headers, pattern) {
+  for (var i = 0; i < headers.length; i++) {
+    if (pattern.test(String(headers[i]).trim())) return i;
+  }
+  return -1;
+}
+
+// ------------------------------------------------------------------
+// HELPER: Escape HTML untuk elak XSS dalam email
+// ------------------------------------------------------------------
+function escapeHtmlSrv(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// ------------------------------------------------------------------
+// HANTAR EMAIL NOTIFIKASI STATUS KEPADA PEMBELI (BM + EN)
+// ------------------------------------------------------------------
+function sendStatusEmail(buyerEmail, buyerName, productLabel, status, notes) {
+  try {
+    if (!buyerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)) return;
+
+    var statusMap = {
+      'Baru'            : { bm: '🆕 Baru',            en: 'New' },
+      'Disahkan'        : { bm: '✅ Disahkan',         en: 'Confirmed' },
+      'Sedang Diproses' : { bm: '⚙️ Sedang Diproses', en: 'In Process' },
+      'Siap Kutip'      : { bm: '📦 Siap Kutip',       en: 'Ready for Collection' },
+      'Selesai'         : { bm: '🎉 Selesai',          en: 'Completed' },
+      'Dibatalkan'      : { bm: '❌ Dibatalkan',        en: 'Cancelled' },
+      'Tak Ambil'       : { bm: '⚠️ Tak Ambil',        en: 'Uncollected' }
+    };
+
+    var statusInfo   = statusMap[status] || { bm: status, en: status };
+    var safeName     = escapeHtmlSrv(buyerName || 'Pelanggan');
+    var safeProduct  = escapeHtmlSrv(productLabel);
+    var safeStatus   = escapeHtmlSrv(statusInfo.bm);
+    var safeStatusEn = escapeHtmlSrv(statusInfo.en);
+    var safeNotes    = notes ? escapeHtmlSrv(notes) : '';
+
+    var notesRow = safeNotes
+      ? '<tr><td style="padding:8px 0 4px;color:#555;font-size:13px;"><strong>Nota Admin / Admin Note:</strong></td></tr>'
+        + '<tr><td style="padding:6px 12px;background:#f9fafb;border-left:3px solid #135c2d;font-size:13px;color:#374151;">' + safeNotes + '</td></tr>'
+      : '';
+
+    var htmlBody = '<!DOCTYPE html><html><head><meta charset="UTF-8"></head>'
+      + '<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;">'
+      + '<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0;">'
+      + '<tr><td align="center">'
+      + '<table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">'
+      + '<tr><td style="background:#135c2d;padding:24px 32px;">'
+      + '<h2 style="margin:0;color:#ffffff;font-size:20px;">Institut Teknologi Unggas (ITU)</h2>'
+      + '<p style="margin:4px 0 0;color:#a7f3d0;font-size:13px;">Notifikasi Status Tempahan / Order Status Notification</p>'
+      + '</td></tr>'
+      + '<tr><td style="padding:28px 32px;">'
+      + '<p style="margin:0 0 16px;font-size:15px;color:#111827;">Salam sejahtera, <strong>' + safeName + '</strong>,</p>'
+      + '<p style="margin:0 0 16px;font-size:14px;color:#374151;">Status tempahan anda telah dikemaskini. / Your order status has been updated.</p>'
+      + '<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;margin-bottom:20px;">'
+      + '<tr><td style="background:#f9fafb;padding:10px 16px;font-size:12px;font-weight:bold;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">PRODUK / PRODUCT</td></tr>'
+      + '<tr><td style="padding:12px 16px;font-size:15px;font-weight:bold;color:#111827;">' + safeProduct + '</td></tr>'
+      + '<tr><td style="background:#f9fafb;padding:10px 16px;font-size:12px;font-weight:bold;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">STATUS BARU / NEW STATUS</td></tr>'
+      + '<tr><td style="padding:12px 16px;font-size:18px;font-weight:bold;color:#135c2d;">' + safeStatus
+      +   ' <span style="font-size:13px;color:#6b7280;font-weight:normal;">(' + safeStatusEn + ')</span></td></tr>'
+      + '</table>'
+      + '<table width="100%" cellpadding="0" cellspacing="0">' + notesRow + '</table>'
+      + '<p style="margin:20px 0 0;font-size:12px;color:#9ca3af;">Emel ini dijana secara automatik. Sila hubungi kami jika ada sebarang pertanyaan.<br>'
+      + 'This is an automated email. Please contact us if you have any questions.</p>'
+      + '</td></tr>'
+      + '<tr><td style="background:#135c2d;padding:16px 32px;text-align:center;">'
+      + '<p style="margin:0;color:#a7f3d0;font-size:12px;">© Institut Teknologi Unggas (ITU)</p>'
+      + '</td></tr>'
+      + '</table></td></tr></table></body></html>';
+
+    MailApp.sendEmail({
+      to      : buyerEmail,
+      subject : '[ITU] Status Tempahan: ' + statusInfo.bm + ' — ' + productLabel,
+      htmlBody: htmlBody
+    });
+  } catch(e) {
+    Logger.log('[sendStatusEmail ERROR] ' + e.message);
+  }
+}
+
+// ------------------------------------------------------------------
 // AMBIL SEMUA DATA TEMPAHAN
 // FIX UTAMA: Guna header name untuk map nilai, bukan index rawak
 // ------------------------------------------------------------------
@@ -267,7 +355,7 @@ function getAllFeedback() {
 // KEMASKINI STATUS TEMPAHAN
 // FIX: getOrCreateColumn dah fix — guna return value dengan betul
 // ------------------------------------------------------------------
-function updateStatus(id, status, notes) {
+function updateStatus(id, status, notes, skipEmail) {
   try {
     if (STATUS_LIST.indexOf(status) < 0) {
       return JSON.stringify({ success: false, error: 'Status tidak sah.' });
@@ -315,6 +403,35 @@ function updateStatus(id, status, notes) {
         .setFontWeight('bold');
     }
 
+    // EMAIL NOTIFICATION — skip kalau bulk update atau explicitly disabled
+    if (skipEmail !== true) {
+      try {
+        var refreshedData  = sheet.getDataRange().getValues();
+        var refreshHeaders = refreshedData[0].map(function(h) { return String(h).trim(); });
+        var refreshRow     = refreshedData[rowIndex - 1];
+
+        var iEmail = findColumnIndex(refreshHeaders, /email/i);
+        var iName  = findColumnIndex(refreshHeaders, /nama\s*pembeli|nama\s*penuh|^nama$/i);
+
+        var buyerEmail = iEmail >= 0 ? String(refreshRow[iEmail] || '').trim() : '';
+        var buyerName  = iName  >= 0 ? String(refreshRow[iName]  || '').trim() : '';
+
+        var productLabel = sheet.getName();
+        for (var si = 0; si < SOURCES.length; si++) {
+          if (SOURCES[si].id === sourceId && SOURCES[si].gid == gid) {
+            productLabel = SOURCES[si].label;
+            break;
+          }
+        }
+
+        if (buyerEmail) {
+          sendStatusEmail(buyerEmail, buyerName, productLabel, status, notes);
+        }
+      } catch(emailErr) {
+        Logger.log('[updateStatus email ERROR] ' + emailErr.message);
+      }
+    }
+
     return JSON.stringify({ success: true });
   } catch(e) {
     return JSON.stringify({ success: false, error: e.message });
@@ -334,7 +451,7 @@ function updateStatusBatch(ids, status, notes) {
     var errors = [];
 
     ids.forEach(function(id) {
-      var res = JSON.parse(updateStatus(id, status, notes));
+      var res = JSON.parse(updateStatus(id, status, notes, true));
       if (res.success) count++;
       else errors.push(res.error);
     });
