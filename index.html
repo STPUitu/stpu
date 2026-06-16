@@ -3,13 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/png" href="https://stpuitu.github.io/stpu/icon-192.png">
-<link rel="apple-touch-icon" href="https://stpuitu.github.io/stpu/icon-192.png">
+
+<!-- ══ PWA TAGS (ikut pattern stpuitu.github.io/tempah) ══ -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#135c2d">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="STPU ITU">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Admin STPU">
+<meta name="mobile-web-app-capable" content="yes">
+
 <title>Dashboard Tempahan — ITU</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <style>
   :root {
     --green:      #1a7a3c;
@@ -74,6 +81,29 @@
   .topbar { background: var(--white); padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 50; box-shadow: var(--shadow); }
   .topbar h1 { font-size: 16px; font-weight: 700; color: var(--green-dark); }
   .topbar .actions { display: flex; gap: 10px; align-items: center; }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+
+  /* ── HAMBURGER (mobile only) ── */
+  .hamburger-btn { display: none; background: none; border: none; font-size: 22px; cursor: pointer; color: var(--green-dark); padding: 4px 8px; line-height: 1; }
+
+  /* ── SIDEBAR OVERLAY (mobile only) ── */
+  .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 99; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+
+  /* ── RESPONSIVE: MOBILE ── */
+  @media (max-width: 860px) {
+    .sidebar {
+      transform: translateX(-100%);
+      transition: transform .25s ease;
+      box-shadow: 4px 0 24px rgba(0,0,0,.25);
+    }
+    .sidebar.open { transform: translateX(0); }
+    .main { margin-left: 0; }
+    .hamburger-btn { display: inline-flex; align-items: center; }
+    .topbar { padding: 0 12px; }
+    .topbar h1 { font-size: 14px; }
+    .topbar .actions .btn span.btn-label { display: none; }
+  }
 
   /* ── BUTTONS ── */
   .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 7px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; font-family: inherit; }
@@ -86,9 +116,8 @@
   .btn-sm { padding: 5px 10px; font-size: 12px; }
 
   /* ── PAGE ── */
-  .page { display: none; padding: 24px; animation: fadeIn .2s; }
+  .page { display: none; padding: 24px; }
   .page.active { display: block; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
   /* ── STAT CARDS ── */
   .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 22px; }
@@ -148,8 +177,7 @@
   /* ── MODAL ── */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
-  .modal { background: #fff; border-radius: 14px; width: 90%; max-width: 620px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.25); animation: slideUp .2s; }
-  @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .modal { background: #fff; border-radius: 14px; width: 90%; max-width: 620px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
   .modal-header { padding: 18px 20px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: #fff; z-index: 1; }
   .modal-title { font-size: 15px; font-weight: 700; color: var(--green-dark); }
   .modal-close { font-size: 20px; cursor: pointer; color: var(--gray); line-height: 1; padding: 2px 6px; border-radius: 5px; }
@@ -236,7 +264,7 @@
   ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
 
   /* ══════════════════════════════════════════
-     ── LOGOUT CONFIRM MODAL (BAHARU) ──
+     ── LOGOUT CONFIRM MODAL ──
   ══════════════════════════════════════════ */
   .logout-modal-overlay {
     display: none;
@@ -317,12 +345,38 @@
     border-radius: 0 0 18px 0;
   }
   .logout-btn-confirm:hover { background: #fff5f5; }
+
+  /* ══ LOADING SCREEN AWAL (PWA) ══ */
+  #initialLoading {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #0d3d20 0%, #1a7a3c 60%, #135c2d 100%);
+    z-index: 9500; transition: opacity .3s ease;
+  }
+  #initialLoading.hidden { opacity: 0; pointer-events: none; display: none; }
+  #initialLoading .box {
+    background: #fff; border-radius: 18px; padding: 40px 32px; max-width: 320px; width: 90%;
+    text-align: center; box-shadow: 0 24px 80px rgba(0,0,0,.35);
+  }
+  #initialLoading .logo { width: 72px; height: 72px; border-radius: 16px; margin: 0 auto 16px; display: block; box-shadow: 0 4px 16px rgba(0,0,0,.15); }
+  #initialLoading h1 { font-size: 15px; font-weight: 800; color: #135c2d; margin-bottom: 14px; line-height: 1.4; }
+  #initialLoading p { font-size: 12px; color: #6b7280; line-height: 1.6; }
 </style>
 </head>
 <body>
 
+<!-- ══ INITIAL LOADING (sebelum app.js sedia) ══ -->
+<div id="initialLoading">
+  <div class="box">
+    <img class="logo" src="icon-192.png" alt="Logo STPU">
+    <h1>Dashboard Tempahan<br>Sistem Tempahan Produk Unggas</h1>
+    <div class="spinner" style="margin:0 auto;"></div>
+    <p style="margin-top:12px;">Memuatkan dashboard...<br>Loading dashboard...</p>
+  </div>
+</div>
+
 <!-- LOGIN -->
-<div class="login-screen" id="loginScreen">
+<div class="login-screen hidden" id="loginScreen">
   <div class="login-box">
     <div class="login-logo">🌾</div>
     <div class="login-title">Dashboard Tempahan</div>
@@ -343,7 +397,7 @@
 
 <div id="toast"></div>
 
-<!-- ══ LOGOUT CONFIRM MODAL (BAHARU) ══ -->
+<!-- ══ LOGOUT CONFIRM MODAL ══ -->
 <div class="logout-modal-overlay" id="logoutModal">
   <div class="logout-modal">
     <div class="logout-modal-icon">
@@ -367,7 +421,7 @@
 </div>
 
 <!-- SIDEBAR -->
-<nav class="sidebar">
+<nav class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <h2>🌾 Tempahan Produk Unggas</h2>
     <p>Institut Teknologi Unggas</p>
@@ -386,12 +440,18 @@
   </div>
 </nav>
 
+<!-- OVERLAY (mobile, bila sidebar terbuka) -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
 <!-- MAIN -->
 <div class="main">
   <div class="topbar">
-    <h1 id="pageTitle">Dashboard Utama</h1>
+    <div class="topbar-left">
+      <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+      <h1 id="pageTitle">Dashboard Utama</h1>
+    </div>
     <div class="actions">
-      <button class="btn btn-outline" onclick="refreshData()">🔄 Muat Semula</button>
+      <button class="btn btn-outline" onclick="refreshData()">🔄 <span class="btn-label">Muat Semula</span></button>
     </div>
   </div>
 
@@ -581,6 +641,85 @@
 
 <script>
 // ══════════════════════════════════════════════
+//  ══ API CONFIG (BAHARU untuk PWA) ══
+//
+//  GANTI URL DI BAWAH dengan URL deployment GAS sebenar
+//  (Deploy -> Manage deployments -> Web app URL, yang berakhir /exec)
+// ══════════════════════════════════════════════
+const EXEC_URL = 'https://script.google.com/macros/s/AKfycbxbA0IJES5WPVo-U7u5rUuTCleHzwIPYejDfwxpJ9cnDQsgpekSRKETtfDqkDnVjZJSDA/exec';
+
+// callApi: dual-mode - guna google.script.run bila dilayan dari GAS,
+// guna fetch bila dilayan dari GitHub Pages.
+function callApi(action, payload) {
+  payload = payload || {};
+  var isGas = !!(window.google && window.google.script && window.google.script.run);
+
+  return new Promise(function(resolve, reject) {
+    if (isGas) {
+      // ── Mod GAS (google.script.run) ──
+      var gsr = google.script.run.withSuccessHandler(function(json) {
+        try { resolve(JSON.parse(json)); } catch(e) { resolve(json); }
+      }).withFailureHandler(reject);
+
+      switch(action) {
+        case 'getAllData':         gsr.getAllData(); break;
+        case 'getAllFeedback':      gsr.getAllFeedback(); break;
+        case 'checkLogin':          gsr.checkLogin(payload.username, payload.password); break;
+        case 'updateStatus':        gsr.updateStatus(payload.id, payload.status, payload.notes); break;
+        case 'updateStatusBatch':   gsr.updateStatusBatch(payload.ids, payload.status, payload.notes); break;
+        case 'exportCsv':           gsr.exportToCsv(JSON.stringify(payload.filter || {})); break;
+        default: reject(new Error('Action tidak dikenali: ' + action));
+      }
+    } else {
+      // ── Mod PWA: SEMUA actions guna JSONP (elak isu CORS GAS) ──
+      var cbName = 'jsonp_cb_' + Date.now() + '_' + Math.floor(Math.random()*100000);
+      var script = document.createElement('script');
+      var cleanup = function() {
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      };
+      var timeoutId = setTimeout(function() {
+        cleanup();
+        reject(new Error('Permintaan tamat tempoh (timeout). Sila cuba lagi.'));
+      }, 30000);
+
+      window[cbName] = function(data) {
+        clearTimeout(timeoutId);
+        cleanup();
+        resolve(data);
+      };
+      script.onerror = function() {
+        clearTimeout(timeoutId);
+        cleanup();
+        reject(new Error('Gagal sambung ke server.'));
+      };
+
+      var url = EXEC_URL + '?action=' + action + '&callback=' + cbName;
+
+      // Tambah params ikut action
+      if (action === 'checkLogin') {
+        url += '&username=' + encodeURIComponent(payload.username || '')
+             + '&password=' + encodeURIComponent(payload.password || '');
+      } else if (action === 'exportCsv' && payload.filter) {
+        url += '&filter=' + encodeURIComponent(JSON.stringify(payload.filter));
+      } else if (action === 'updateStatus') {
+        url += '&id='        + encodeURIComponent(payload.id || '')
+             + '&status='    + encodeURIComponent(payload.status || '')
+             + '&notes='     + encodeURIComponent(payload.notes || '')
+             + '&skipEmail=' + encodeURIComponent(payload.skipEmail ? 'true' : 'false');
+      } else if (action === 'updateStatusBatch') {
+        url += '&ids='    + encodeURIComponent(JSON.stringify(payload.ids || []))
+             + '&status=' + encodeURIComponent(payload.status || '')
+             + '&notes='  + encodeURIComponent(payload.notes || '');
+      }
+
+      script.src = url;
+      document.head.appendChild(script);
+    }
+  });
+}
+
+// ══════════════════════════════════════════════
 //  STATE
 // ══════════════════════════════════════════════
 var allData      = [];
@@ -608,14 +747,22 @@ var SESSION_KEY = 'itu_dashboard_auth';
 function isLoggedIn() { return sessionStorage.getItem(SESSION_KEY) === 'ok'; }
 
 window.onload = function() {
+  document.getElementById('initialLoading').classList.add('hidden');
+
   if (isLoggedIn()) {
     document.getElementById('loginScreen').classList.add('hidden');
     loadAllData();
   } else {
+    document.getElementById('loginScreen').classList.remove('hidden');
     setTimeout(function() { document.getElementById('loginUser').focus(); }, 150);
   }
   document.getElementById('loginPass').addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); });
   document.getElementById('loginUser').addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('loginPass').focus(); });
+
+  // Daftar service worker untuk PWA (install ke skrin utama, akses offline shell)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function() {});
+  }
 };
 
 function doLogin() {
@@ -631,9 +778,8 @@ function doLogin() {
   }
   btnEl.disabled = true; btnEl.textContent = '⏳ Mengesahkan...';
 
-  google.script.run
-    .withSuccessHandler(function(json) {
-      var res = JSON.parse(json);
+  callApi('checkLogin', { username: username, password: password })
+    .then(function(res) {
       btnEl.disabled = false; btnEl.textContent = '🔐 Log Masuk';
       if (res.success) {
         sessionStorage.setItem(SESSION_KEY, 'ok');
@@ -647,12 +793,11 @@ function doLogin() {
         document.getElementById('loginPass').focus();
       }
     })
-    .withFailureHandler(function(err) {
+    .catch(function(err) {
       btnEl.disabled = false; btnEl.textContent = '🔐 Log Masuk';
       errEl.textContent = '❌ Ralat: ' + err.message;
       errEl.classList.add('show');
-    })
-    .checkLogin(username, password);
+    });
 }
 
 // ── LOGOUT — guna custom modal, bukan confirm() ──
@@ -683,37 +828,41 @@ document.getElementById('logoutModal').addEventListener('click', function(e) {
 // ══════════════════════════════════════════════
 function loadAllData() {
   showLoading(true);
-  google.script.run
-    .withSuccessHandler(function(json) {
-      allData = JSON.parse(json);
+  callApi('getAllData')
+    .then(function(json) {
+      allData = json;
       buildDynamicHeaders();
       buildFilters();
       applyFilter();
       renderDashboard();
       showLoading(false);
       document.getElementById('lastRefresh').textContent = new Date().toLocaleTimeString('ms-MY');
+
+      // GSAP: animate .card blocks selepas data load
+      gsap.fromTo('.card',
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.45, stagger: 0.1, ease: 'power2.out', delay: 0.2 }
+      );
     })
-    .withFailureHandler(function(err) {
+    .catch(function(err) {
       showLoading(false); showToast('❌ Ralat: ' + err.message, 'error');
-    })
-    .getAllData();
+    });
 }
 
 function loadFeedbackData() {
   document.getElementById('fbCardList').innerHTML =
     '<div class="empty-state"><div class="big-icon" style="font-size:32px;margin-bottom:8px;">⏳</div><p>Memuatkan maklumbalas...</p></div>';
 
-  google.script.run
-    .withSuccessHandler(function(json) {
-      allFeedback = JSON.parse(json);
+  callApi('getAllFeedback')
+    .then(function(json) {
+      allFeedback = json;
       buildFbHeaders();
       applyFbFilter();
     })
-    .withFailureHandler(function(err) {
+    .catch(function(err) {
       document.getElementById('fbCardList').innerHTML =
         '<div class="empty-state"><div class="big-icon">⚠️</div><p>Ralat memuatkan maklumbalas: ' + escHtml(err.message) + '</p></div>';
-    })
-    .getAllFeedback();
+    });
 }
 
 function refreshData() { loadAllData(); }
@@ -887,10 +1036,16 @@ function applyBulkStatus() {
   if(selectedIds.size===0){ showToast('Tiada rekod dipilih!','error'); return; }
   showLoading(true);
   var ids = [...selectedIds];
-  google.script.run
-    .withSuccessHandler(function(json){ var res=JSON.parse(json); showLoading(false); if(res.success){ ids.forEach(function(id){var r=allData.find(function(x){return x._id===id;}); if(r) r._status=status;}); clearSelection(); applyFilter(); renderDashboard(); showToast('✅ '+res.count+' rekod dikemaskini → '+status,'success'); } else showToast('❌ '+res.error,'error'); })
-    .withFailureHandler(function(err){ showLoading(false); showToast('❌ '+err.message,'error'); })
-    .updateStatusBatch(ids, status, '');
+  callApi('updateStatusBatch', { ids: ids, status: status, notes: '' })
+    .then(function(res){
+      showLoading(false);
+      if(res.success){
+        ids.forEach(function(id){var r=allData.find(function(x){return x._id===id;}); if(r) r._status=status;});
+        clearSelection(); applyFilter(); renderDashboard();
+        showToast('✅ '+res.count+' rekod dikemaskini → '+status,'success');
+      } else showToast('❌ '+res.error,'error');
+    })
+    .catch(function(err){ showLoading(false); showToast('❌ '+err.message,'error'); });
 }
 
 // ══════════════════════════════════════════════
@@ -928,6 +1083,13 @@ function openModal(id) {
 
   document.getElementById('modalBody').innerHTML = html;
   document.getElementById('orderModal').classList.add('open');
+
+  // GSAP: modal slide up masuk
+  var modalEl = document.querySelector('#orderModal .modal');
+  gsap.fromTo(modalEl,
+    { opacity: 0, y: 40, scale: 0.96 },
+    { opacity: 1, y: 0, scale: 1, duration: 0.3, ease: 'back.out(1.4)' }
+  );
 }
 
 function closeModal() { document.getElementById('orderModal').classList.remove('open'); currentModalId=null; }
@@ -937,10 +1099,17 @@ function saveStatus() {
   var status=document.getElementById('modalStatus').value;
   var notes=document.getElementById('modalNotes').value;
   document.getElementById('btnSave').disabled=true;
-  google.script.run
-    .withSuccessHandler(function(json){ var res=JSON.parse(json); document.getElementById('btnSave').disabled=false; if(res.success){ var r=allData.find(function(x){return x._id===currentModalId;}); if(r){r._status=status;r._notes=notes;} closeModal(); applyFilter(); renderDashboard(); showToast('✅ Status berjaya dikemaskini!','success'); } else showToast('❌ '+res.error,'error'); })
-    .withFailureHandler(function(err){ document.getElementById('btnSave').disabled=false; showToast('❌ '+err.message,'error'); })
-    .updateStatus(currentModalId, status, notes);
+  callApi('updateStatus', { id: currentModalId, status: status, notes: notes })
+    .then(function(res){
+      document.getElementById('btnSave').disabled=false;
+      if(res.success){
+        var r=allData.find(function(x){return x._id===currentModalId;});
+        if(r){r._status=status;r._notes=notes;}
+        closeModal(); applyFilter(); renderDashboard();
+        showToast('✅ Status berjaya dikemaskini!','success');
+      } else showToast('❌ '+res.error,'error');
+    })
+    .catch(function(err){ document.getElementById('btnSave').disabled=false; showToast('❌ '+err.message,'error'); });
 }
 
 document.getElementById('orderModal').addEventListener('click',function(e){if(e.target===this)closeModal();});
@@ -957,13 +1126,31 @@ function renderDashboard() {
   var bulanIni=0;
   allData.forEach(function(r){ var tsKey=getTimestampKey(r); if(tsKey&&r[tsKey]){var p=String(r[tsKey]).split('/'); if(p.length>=3&&p[1]===curM&&p[2].startsWith(curY))bulanIni++;}});
 
-  document.getElementById('statTotal').textContent   = allData.length;
-  document.getElementById('statBaru').textContent    = counts['Baru']||0;
-  document.getElementById('statProses').textContent  = (counts['Disahkan']||0)+(counts['Sedang Diproses']||0);
-  document.getElementById('statSelesai').textContent = (counts['Selesai']||0)+(counts['Siap Kutip']||0);
-  document.getElementById('statBatal').textContent   = counts['Dibatalkan']||0;
-  document.getElementById('statBulanIni').textContent= bulanIni;
+  // GSAP: counter animation untuk stat numbers
+  function animateCounter(id, target) {
+    var obj = { val: 0 };
+    gsap.to(obj, {
+      val: target,
+      duration: 1.2,
+      ease: 'power2.out',
+      onUpdate: function() {
+        document.getElementById(id).textContent = Math.round(obj.val);
+      }
+    });
+  }
+  animateCounter('statTotal',    allData.length);
+  animateCounter('statBaru',     counts['Baru']||0);
+  animateCounter('statProses',   (counts['Disahkan']||0)+(counts['Sedang Diproses']||0));
+  animateCounter('statSelesai',  (counts['Selesai']||0)+(counts['Siap Kutip']||0));
+  animateCounter('statBatal',    counts['Dibatalkan']||0);
+  animateCounter('statBulanIni', bulanIni);
   document.getElementById('statBulanLabel').textContent = MONTHS[parseInt(curM)]+' '+curY;
+
+  // GSAP: stat cards stagger masuk
+  gsap.fromTo('.stat-card',
+    { opacity: 0, y: 20, scale: 0.95 },
+    { opacity: 1, y: 0, scale: 1, duration: 0.4, stagger: 0.07, ease: 'power2.out', delay: 0.1 }
+  );
 
   var bySource={}; allData.forEach(function(r){bySource[r._source]=(bySource[r._source]||0)+1;});
   var colors=['#1a7a3c','#2563eb','#f5a623','#9333ea','#d63031','#0891b2'];
@@ -1150,10 +1337,17 @@ function destroyChart(id){if(chartInstances[id]){chartInstances[id].destroy();de
 function doExport() {
   var params={source:document.getElementById('expSource').value,status:document.getElementById('expStatus').value,month:document.getElementById('expMonth').value,year:document.getElementById('expYear').value};
   showLoading(true);
-  google.script.run
-    .withSuccessHandler(function(csv){showLoading(false); if(!csv){showToast('⚠️ Tiada data untuk dieksport','error');return;} var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'}); var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download='HasilLadang_Export_'+new Date().toISOString().slice(0,10)+'.csv'; a.click(); URL.revokeObjectURL(url); showToast('✅ CSV berjaya dimuat turun!','success');})
-    .withFailureHandler(function(err){showLoading(false);showToast('❌ '+err.message,'error');})
-    .exportToCsv(JSON.stringify(params));
+  callApi('exportCsv', { filter: params })
+    .then(function(csv){
+      showLoading(false);
+      if(!csv){showToast('⚠️ Tiada data untuk dieksport','error');return;}
+      var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a'); a.href=url; a.download='HasilLadang_Export_'+new Date().toISOString().slice(0,10)+'.csv'; a.click();
+      URL.revokeObjectURL(url);
+      showToast('✅ CSV berjaya dimuat turun!','success');
+    })
+    .catch(function(err){showLoading(false);showToast('❌ '+err.message,'error');});
 }
 
 // ══════════════════════════════════════════════
@@ -1165,13 +1359,46 @@ var fbLoaded=false;
 function showPage(name) {
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
-  document.getElementById('page-'+name).classList.add('active');
+  var el = document.getElementById('page-'+name);
+  el.classList.add('active');
   document.getElementById('nav-'+name).classList.add('active');
   document.getElementById('pageTitle').textContent=pageTitles[name];
+
+  // GSAP: page fade+slide masuk
+  gsap.fromTo(el,
+    { opacity: 0, y: 12 },
+    { opacity: 1, y: 0, duration: 0.28, ease: 'power2.out' }
+  );
+
   if(name==='stats') setTimeout(renderCharts,100);
   if(name==='orders') applyFilter();
   if(name==='feedback' && !fbLoaded){ fbLoaded=true; loadFeedbackData(); }
   else if(name==='feedback') _doRenderFeedback();
+  closeSidebar();
+}
+
+function toggleSidebar(){
+  var sb = document.getElementById('sidebar');
+  var ov = document.getElementById('sidebarOverlay');
+  var isOpen = sb.classList.contains('open');
+  if (!isOpen) {
+    sb.classList.add('open');
+    ov.classList.add('open');
+  } else {
+    doCloseSidebarAnim(sb, ov);
+  }
+}
+
+function doCloseSidebarAnim(sb, ov) {
+  sb = sb || document.getElementById('sidebar');
+  ov = ov || document.getElementById('sidebarOverlay');
+  sb.classList.remove('open');
+  ov.classList.remove('open');
+}
+function closeSidebar(){
+  if (window.innerWidth <= 860) {
+    doCloseSidebarAnim();
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -1194,7 +1421,21 @@ function escHtml(str){return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt
 function truncate(str,n){return str.length>n?str.substring(0,n)+'…':str;}
 function showLoading(show){document.getElementById('loadingScreen').classList.toggle('hidden',!show);}
 var toastTimer;
-function showToast(msg,type){type=type||'';var t=document.getElementById('toast');t.textContent=msg;t.className='show '+type;clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.className='';},3500);}
+function showToast(msg,type){
+  type=type||'';
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className=type;
+  clearTimeout(toastTimer);
+  // GSAP: toast slide up + bounce masuk
+  gsap.fromTo(t,
+    { y: 60, opacity: 0 },
+    { y: 0, opacity: 1, duration: 0.4, ease: 'back.out(1.7)' }
+  );
+  toastTimer=setTimeout(function(){
+    gsap.to(t,{ y: 60, opacity: 0, duration: 0.3, ease: 'power2.in', onComplete: function(){ t.className=''; }});
+  },3200);
+}
 </script>
 </body>
 </html>
