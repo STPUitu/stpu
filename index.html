@@ -672,53 +672,50 @@ function callApi(action, payload) {
         default: reject(new Error('Action tidak dikenali: ' + action));
       }
     } else {
-      // ── Mod PWA: GET actions guna JSONP (elak isu CORS GAS yang inconsistent) ──
-      var GET_ACTIONS = ['getAllData', 'getAllFeedback', 'exportCsv', 'checkLogin'];
+      // ── Mod PWA: SEMUA actions guna JSONP (elak isu CORS GAS) ──
+      var cbName = 'jsonp_cb_' + Date.now() + '_' + Math.floor(Math.random()*100000);
+      var script = document.createElement('script');
+      var cleanup = function() {
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      };
+      var timeoutId = setTimeout(function() {
+        cleanup();
+        reject(new Error('Permintaan tamat tempoh (timeout). Sila cuba lagi.'));
+      }, 30000);
 
-      if (GET_ACTIONS.indexOf(action) !== -1) {
-        var cbName = 'jsonp_cb_' + Date.now() + '_' + Math.floor(Math.random()*100000);
-        var script = document.createElement('script');
-        var cleanup = function() {
-          delete window[cbName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-        };
-        var timeoutId = setTimeout(function() {
-          cleanup();
-          reject(new Error('Permintaan tamat tempoh (timeout). Sila cuba lagi.'));
-        }, 30000);
+      window[cbName] = function(data) {
+        clearTimeout(timeoutId);
+        cleanup();
+        resolve(data);
+      };
+      script.onerror = function() {
+        clearTimeout(timeoutId);
+        cleanup();
+        reject(new Error('Gagal sambung ke server.'));
+      };
 
-        window[cbName] = function(data) {
-          clearTimeout(timeoutId);
-          cleanup();
-          resolve(data);
-        };
-        script.onerror = function() {
-          clearTimeout(timeoutId);
-          cleanup();
-          reject(new Error('Gagal sambung ke server.'));
-        };
+      var url = EXEC_URL + '?action=' + action + '&callback=' + cbName;
 
-        var url = EXEC_URL + '?action=' + action + '&callback=' + cbName;
-        if (action === 'checkLogin') {
-          url += '&username=' + encodeURIComponent(payload.username || '')
-               + '&password=' + encodeURIComponent(payload.password || '');
-        }
-        if (action === 'exportCsv' && payload.filter) {
-          url += '&filter=' + encodeURIComponent(JSON.stringify(payload.filter));
-        }
-        script.src = url;
-        document.head.appendChild(script);
-      } else {
-        // ── POST actions (updateStatus, updateStatusBatch) ──
-        fetch(EXEC_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(Object.assign({ action: action }, payload))
-        })
-          .then(function(res) { return res.json(); })
-          .then(resolve)
-          .catch(reject);
+      // Tambah params ikut action
+      if (action === 'checkLogin') {
+        url += '&username=' + encodeURIComponent(payload.username || '')
+             + '&password=' + encodeURIComponent(payload.password || '');
+      } else if (action === 'exportCsv' && payload.filter) {
+        url += '&filter=' + encodeURIComponent(JSON.stringify(payload.filter));
+      } else if (action === 'updateStatus') {
+        url += '&id='        + encodeURIComponent(payload.id || '')
+             + '&status='    + encodeURIComponent(payload.status || '')
+             + '&notes='     + encodeURIComponent(payload.notes || '')
+             + '&skipEmail=' + encodeURIComponent(payload.skipEmail ? 'true' : 'false');
+      } else if (action === 'updateStatusBatch') {
+        url += '&ids='    + encodeURIComponent(JSON.stringify(payload.ids || []))
+             + '&status=' + encodeURIComponent(payload.status || '')
+             + '&notes='  + encodeURIComponent(payload.notes || '');
       }
+
+      script.src = url;
+      document.head.appendChild(script);
     }
   });
 }
