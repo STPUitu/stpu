@@ -1384,20 +1384,24 @@ function toggleSidebar(){
   if (!isOpen) {
     sb.classList.add('open');
     ov.classList.add('open');
-    // GSAP: sidebar slide in dari kiri
-    gsap.fromTo(sb, { x: -220 }, { x: 0, duration: 0.3, ease: 'power3.out' });
+    // GSAP: overlay fade in (CSS handle sidebar slide via transition)
     gsap.fromTo(ov, { opacity: 0 }, { opacity: 1, duration: 0.3 });
   } else {
-    gsap.to(sb, { x: -220, duration: 0.25, ease: 'power2.in', onComplete: function(){ sb.classList.remove('open'); } });
-    gsap.to(ov, { opacity: 0, duration: 0.25, onComplete: function(){ ov.classList.remove('open'); } });
+    doCloseSidebarAnim(sb, ov);
   }
 }
+
+function doCloseSidebarAnim(sb, ov) {
+  sb = sb || document.getElementById('sidebar');
+  ov = ov || document.getElementById('sidebarOverlay');
+  gsap.to(ov, { opacity: 0, duration: 0.25, onComplete: function(){ 
+    ov.classList.remove('open');
+  }});
+  sb.classList.remove('open');
+}
 function closeSidebar(){
-  var sb = document.getElementById('sidebar');
-  var ov = document.getElementById('sidebarOverlay');
-  if (sb.classList.contains('open')) {
-    gsap.to(sb, { x: -220, duration: 0.25, ease: 'power2.in', onComplete: function(){ sb.classList.remove('open'); gsap.set(sb, { x: 0 }); } });
-    gsap.to(ov, { opacity: 0, duration: 0.25, onComplete: function(){ ov.classList.remove('open'); } });
+  if (window.innerWidth <= 860) {
+    doCloseSidebarAnim();
   }
 }
 
