@@ -87,8 +87,8 @@
   .hamburger-btn { display: none; background: none; border: none; font-size: 22px; cursor: pointer; color: var(--green-dark); padding: 4px 8px; line-height: 1; }
 
   /* ── SIDEBAR OVERLAY (mobile only) ── */
-  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 99; }
-  .sidebar-overlay.open { display: block; }
+  .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 99; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
 
   /* ── RESPONSIVE: MOBILE ── */
   @media (max-width: 860px) {
@@ -1384,8 +1384,6 @@ function toggleSidebar(){
   if (!isOpen) {
     sb.classList.add('open');
     ov.classList.add('open');
-    // GSAP: overlay fade in (CSS handle sidebar slide via transition)
-    gsap.fromTo(ov, { opacity: 0 }, { opacity: 1, duration: 0.3 });
   } else {
     doCloseSidebarAnim(sb, ov);
   }
@@ -1394,10 +1392,8 @@ function toggleSidebar(){
 function doCloseSidebarAnim(sb, ov) {
   sb = sb || document.getElementById('sidebar');
   ov = ov || document.getElementById('sidebarOverlay');
-  gsap.to(ov, { opacity: 0, duration: 0.25, onComplete: function(){ 
-    ov.classList.remove('open');
-  }});
   sb.classList.remove('open');
+  ov.classList.remove('open');
 }
 function closeSidebar(){
   if (window.innerWidth <= 860) {
