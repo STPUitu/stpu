@@ -12,18 +12,21 @@
   <meta name="apple-mobile-web-app-title" content="STPU ITU">
   <title>ADMIN STPU ITU — Dashboard Tempahan</title>
   <style>
-    body { margin: 0; background: #0d3d20; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: 'Segoe UI', sans-serif; flex-direction: column; gap: 16px; }
-    .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,.2); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    p { color: rgba(255,255,255,.7); font-size: 14px; margin: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; background: #0d3d20; }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
   </style>
 </head>
 <body>
-  <div class="spinner"></div>
-  <p>Memuatkan Dashboard STPU...</p>
-  <script>
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxbA0IJES5WPVo-U7u5rUuTCleHzwIPYejDfwxpJ9cnDQsgpekSRKETtfDqkDnVjZJSDA/exec';
-    window.location.replace(GAS_URL);
-  </script>
+  <iframe 
+    src="https://script.google.com/macros/s/AKfycbxbA0IJES5WPVo-U7u5rUuTCleHzwIPYejDfwxpJ9cnDQsgpekSRKETtfDqkDnVjZJSDA/exec"
+    allowfullscreen
+    allow="fullscreen">
+  </iframe>
 </body>
 </html>
