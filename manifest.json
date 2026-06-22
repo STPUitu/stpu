@@ -1,13 +1,13 @@
 {
-  "name": "Dashboard Tempahan STPU ITU",
-  "short_name": "STPU ITU",
-  "description": "Dashboard Tempahan Produk Unggas - Sistem Tempahan Produk Unggas, Institut Teknologi Unggas",
+  "name": "STPU Admin — Dashboard Tempahan ITU",
+  "short_name": "STPU Admin",
+  "description": "Dashboard Admin Tempahan Produk Unggas — Institut Teknologi Unggas, Unit Penetasan",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f0f4f1",
+  "background_color": "#0d3d20",
   "theme_color": "#135c2d",
-  "orientation": "portrait-primary",
+  "lang": "ms",
   "icons": [
     {
       "src": "icon-192.png",
