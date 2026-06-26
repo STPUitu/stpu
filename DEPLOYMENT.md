@@ -34,6 +34,9 @@ Dalam GAS editor, pastikan **Project Settings → Script Properties** mengandung
 - Selepas tambah/ubah fungsi yang dipanggil oleh `callApi()`
 - Selepas tambah scope GAS baharu (contoh: MailApp, DriveApp)
 - Selepas ubah validasi backend seperti `ADMIN_API_KEY`
+- Selepas ubah status rasmi atau normalisasi legacy status
+
+Perubahan cleanup status rasmi mengubah `Code.js`, jadi GAS deployment mesti dikemaskini menggunakan **New version** sebelum backend production membaca normalisasi terkini.
 
 ### Jika tambah scope baharu:
 Scope baharu memerlukan authorization sebelum boleh deploy:
@@ -68,12 +71,16 @@ GitHub Pages auto-update dalam masa ~1-2 minit selepas push.
 - `sw.js` menggunakan network-first untuk `script.google.com` dan `script.googleusercontent.com`
 - Jika offline dan request JSONP mempunyai parameter `callback`, fallback dibalas sebagai `callback(errorObject)`
 - `manifest.json` menggunakan orientation `"any"`
+- Status rasmi tempahan: `Baru`, `Disahkan`, `Sedang Diproses`, `Selesai`, `Tidak Ambil`, `Dibatalkan`
+- Status lama `Siap Kutip` dinormalisasi kepada `Sedang Diproses`; `Tak Ambil` dinormalisasi kepada `Tidak Ambil`
+- Wording kutip/pickup lama telah dibuang dari UI dan mesej Contact Assist
+- Dashboard stat **Selesai** kini mengira `Selesai` sahaja
 - Contact Assist **"📞 Hubungi Pembeli"** berada dalam modal tempahan dan hanya frontend-only:
   - WhatsApp membuka `wa.me` dengan mesej siap diisi
   - Email membuka `mailto:` dengan subject/body siap diisi
   - Copy Mesej salin mesej ke clipboard
   - Tiada auto-send
-  - Mesej ikut status semasa yang dipilih dalam modal
+  - Mesej ikut status semasa yang dipilih dalam modal: `Selesai` = tempahan telah selesai, `Tidak Ambil` = tempahan direkodkan sebagai tidak diambil/dituntut, `Dibatalkan` = tempahan telah dibatalkan, status lain = status tempahan telah dikemaskini
 
 Perubahan Contact Assist tidak memerlukan deployment GAS kerana tiada perubahan backend.
 

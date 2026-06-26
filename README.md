@@ -142,6 +142,18 @@ Dashboard membaca dari 6 Google Sheet tempahan dan 1 Google Sheet maklumbalas (3
 **Aliran status tempahan:**
 `Baru` → `Disahkan` → `Sedang Diproses` → `Selesai` / `Tidak Ambil` / `Dibatalkan`
 
+Status rasmi sistem adalah tepat:
+- `Baru`
+- `Disahkan`
+- `Sedang Diproses`
+- `Selesai`
+- `Tidak Ambil`
+- `Dibatalkan`
+
+Status lama/bukan rasmi seperti `Siap Kutip`, `Tak Ambil`, dan semua wording kutip/pickup telah dibuang dari UI. Untuk data lama dalam Sheet, `Siap Kutip` dinormalisasi kepada `Sedang Diproses`, dan `Tak Ambil` dinormalisasi kepada `Tidak Ambil` semasa data dibaca.
+
+Stat dashboard **Selesai** kini mengira `Selesai` sahaja.
+
 Email notifikasi dihantar ke pembeli secara automatik (BM + EN) setiap kali status dikemaskini secara individu. Bulk update tidak hantar email.
 
 ### Hubungi Pembeli / Contact Assist

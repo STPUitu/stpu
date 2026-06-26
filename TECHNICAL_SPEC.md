@@ -195,7 +195,29 @@ Kolum-kolum ini dicipta secara automatik dalam Sheet jika belum wujud (`getOrCre
 
 ---
 
-## 9. Responsive Layout
+## 9. Status Tempahan Rasmi
+
+Senarai status rasmi mesti kekal tepat:
+- `Baru`
+- `Disahkan`
+- `Sedang Diproses`
+- `Selesai`
+- `Tidak Ambil`
+- `Dibatalkan`
+
+Status lama/bukan rasmi telah dibuang dari UI dan logic paparan: `Siap Kutip`, `Tak Ambil`, serta semua wording kutip/pickup.
+
+Normalisasi legacy semasa data dibaca:
+| Nilai lama | Dinormalisasi kepada |
+|------------|----------------------|
+| `Siap Kutip` | `Sedang Diproses` |
+| `Tak Ambil` | `Tidak Ambil` |
+
+Dashboard stat **Selesai** hanya mengira rekod berstatus `Selesai`; ia tidak lagi menggabungkan status lama.
+
+---
+
+## 10. Responsive Layout
 
 Dashboard menggunakan breakpoint `max-width: 860px`:
 - Desktop: sidebar tetap di kiri (220px), kandungan utama ada `margin-left: 220px`
@@ -203,7 +225,7 @@ Dashboard menggunakan breakpoint `max-width: 860px`:
 
 ---
 
-## 10. GSAP Animations
+## 11. GSAP Animations
 
 Dashboard menggunakan GSAP 3.12.5 (CDN) untuk animasi:
 
@@ -216,7 +238,7 @@ Dashboard menggunakan GSAP 3.12.5 (CDN) untuk animasi:
 
 ---
 
-## 11. Contact Assist dalam Modal Tempahan
+## 12. Contact Assist dalam Modal Tempahan
 
 Modal tempahan mempunyai seksyen **"📞 Hubungi Pembeli"** yang membantu admin menyediakan mesej kepada pembeli tanpa menghantar apa-apa secara automatik.
 
@@ -237,7 +259,7 @@ Feature ini frontend-only dalam `index.html`. Ia tidak memerlukan perubahan GAS,
 
 ---
 
-## 12. Semua Actions Guna JSONP
+## 13. Semua Actions Guna JSONP
 
 **SEMUA actions — GET dan write — guna JSONP.** Tiada `fetch()` POST langsung dari GitHub Pages context.
 
