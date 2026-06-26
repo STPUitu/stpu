@@ -2,20 +2,18 @@
 
 ---
 
-## 1. Dual-Mode `callApi()`
+## 1. JSONP API Client (`gasCall()`)
 
-`callApi(action, payload)` dalam `index.html` beroperasi dalam dua mod bergantung pada context semasa:
+`index.html` di GitHub Pages menggunakan helper `gasCall(params)` untuk semua komunikasi dengan GAS backend.
 
 ```javascript
-var isGas = !!(window.google && window.google.script && window.google.script.run);
+var allParams = Object.assign({}, params, {
+  apiKey: API_KEY,
+  callback: cbName
+});
 ```
 
-### Mod 1: GAS Context (`Index.html` diserve oleh GAS)
-- `google.script.run` digunakan — komunikasi terus dalam sandbox GAS
-- Tiada isu CORS kerana request tidak merentas domain
-
-### Mod 2: GitHub Pages Context (`index.html` di `stpuitu.github.io/admin/`)
-- **Semua actions** → JSONP via `<script>` tag (lihat bahagian 2 dan 10)
+`API_KEY` dihantar dengan setiap request JSONP. Backend menyemak nilai ini terhadap Script Property `ADMIN_API_KEY` sebelum menjalankan sebarang API action.
 
 ---
 
@@ -41,8 +39,8 @@ window[cbName] = function(data) {
   resolve(data);
 };
 
-// Request dengan ?action dan ?callback
-script.src = EXEC_URL + '?action=getAllData&callback=' + cbName;
+// Request dengan ?action, ?apiKey dan ?callback
+script.src = GAS_URL + '?action=getAllData&apiKey=' + API_KEY + '&callback=' + cbName;
 document.head.appendChild(script);
 ```
 
@@ -51,6 +49,8 @@ document.head.appendChild(script);
 function doGet(e) {
   var action   = e.parameter.action;
   var callback = e.parameter.callback || '';
+
+  // validateApiKey(e.parameter) mesti lulus sebelum action dijalankan
 
   // ... jalankan fungsi, dapat result sebagai JSON string ...
 
@@ -82,7 +82,9 @@ Browser jalankan skrip yang diterima → callback global dipanggil dengan data �
 Incoming GET request ke EXEC_URL
 │
 ├── Ada ?action parameter
-│   ├── Jalankan fungsi API berkaitan
+│   ├── Semak apiKey lawan Script Property ADMIN_API_KEY
+│   ├── Jika tidak sah: balas error JSON / callback(errorObject)
+│   ├── Jika sah: jalankan fungsi API berkaitan
 │   └── Balas: callback(JSON_data);   ← format JSONP
 │
 └── Tiada ?action parameter
@@ -95,7 +97,7 @@ Semua GET action sokong parameter `?callback=` untuk JSONP. Jika `?callback=` ti
 
 ## 4. Service Worker (`sw.js`)
 
-**CACHE_NAME**: `admin-cache-v1`
+**CACHE_NAME**: `stpu-admin-cache-v2`
 
 Nama cache unik dipilih untuk elak clash dengan Service Worker repo lain (contoh: repo `tempah` mungkin guna nama generic). Service Worker hanya aktif dalam scope `/admin/`.
 
@@ -109,7 +111,12 @@ Nama cache unik dipilih untuk elak clash dengan Service Worker repo lain (contoh
 
 Jika network gagal untuk GAS request semasa offline, Service Worker balas dengan:
 ```json
-{ "ok": false, "error": "offline" }
+{ "success": false, "error": "Tiada sambungan internet." }
+```
+
+Jika request offline mengandungi parameter `callback`, Service Worker membalas dalam format JSONP yang valid:
+```javascript
+callback({ "success": false, "error": "Tiada sambungan internet." });
 ```
 
 ### Install event:
@@ -121,7 +128,7 @@ Cache awal (pre-cache) fail-fail shell:
 - `./icon-512.png`
 
 ### Activate event:
-Buang semua cache lama (nama berbeza dari `admin-cache-v1`) dan `claim()` semua client serta-merta tanpa perlu reload.
+Buang semua cache lama (nama berbeza dari `stpu-admin-cache-v2`) dan `claim()` semua client serta-merta tanpa perlu reload.
 
 ---
 
@@ -167,6 +174,7 @@ Kolum-kolum ini dicipta secara automatik dalam Sheet jika belum wujud (`getOrCre
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "orientation": "any",
   "theme_color": "#135c2d",
   "background_color": "#f0f4f1"
 }
@@ -180,7 +188,9 @@ Kolum-kolum ini dicipta secara automatik dalam Sheet jika belum wujud (`getOrCre
 
 - Login disimpan dalam `sessionStorage` (bukan `localStorage`) — hilang automatik bila tab/browser ditutup
 - Storage key: `itu_dashboard_auth` = `'ok'`
-- `checkLogin()` dalam `Code.js` semak `ADMIN_CREDENTIALS` array — tukar terus dalam array jika perlu ubah password
+- `checkLogin()` dalam `Code.js` semak `ADMIN_USERNAME` dan `ADMIN_PASSWORD` dari GAS Script Properties
+- Semua API actions memerlukan `apiKey` yang sepadan dengan Script Property `ADMIN_API_KEY`
+- Required Script Properties: `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_API_KEY`
 - Email notifikasi (bila kemaskini status individu) hanya dihantar jika kolum `Email Address` wujud dalam Sheet sumber dan mengandungi nilai yang sah
 
 ---
@@ -206,7 +216,27 @@ Dashboard menggunakan GSAP 3.12.5 (CDN) untuk animasi:
 
 ---
 
-## 11. Semua Actions Guna JSONP
+## 11. Contact Assist dalam Modal Tempahan
+
+Modal tempahan mempunyai seksyen **"📞 Hubungi Pembeli"** yang membantu admin menyediakan mesej kepada pembeli tanpa menghantar apa-apa secara automatik.
+
+Butang yang tersedia:
+| Button | Fungsi |
+|--------|--------|
+| `📲 WhatsApp` | Normalise nombor telefon Malaysia dan buka `https://wa.me/<phone>?text=<message>` |
+| `📧 Email` | Buka `mailto:<email>?subject=...&body=...` |
+| `📋 Copy Mesej` | Salin mesej ke clipboard |
+
+Mesej dijana dalam Bahasa Malaysia berdasarkan status semasa yang dipilih dalam modal:
+- `Siap Kutip` → tambah arahan kutipan
+- `Dibatalkan` → minta pembeli hubungi ITU jika ada pertanyaan
+- Status lain → maklumkan status tempahan telah dikemaskini
+
+Feature ini frontend-only dalam `index.html`. Ia tidak memerlukan perubahan GAS, tidak menulis ke Google Sheets, dan tidak auto-send WhatsApp/email.
+
+---
+
+## 12. Semua Actions Guna JSONP
 
 **SEMUA actions — GET dan write — guna JSONP.** Tiada `fetch()` POST langsung dari GitHub Pages context.
 
@@ -220,3 +250,5 @@ Dashboard menggunakan GSAP 3.12.5 (CDN) untuk animasi:
 | `updateStatusBatch` | Write | `?ids=<JSON encoded>&status=&notes=` |
 
 **Sebab**: GAS CORS inconsistent untuk `fetch()` dari domain lain, walaupun untuk GET request. JSONP via `<script>` tag tidak tertakluk kepada CORS sepenuhnya, menjadikannya lebih reliable untuk semua jenis request dari GitHub Pages.
+
+Semua request turut membawa `apiKey=<API_KEY>` dan backend menolak request jika key tiada atau tidak sepadan dengan `ADMIN_API_KEY`.

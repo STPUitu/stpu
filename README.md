@@ -34,6 +34,7 @@ GAS Project (tempahanitu@gmail.com)
 ```
 
 Apabila `index.html` di GitHub Pages perlu data, ia memanggil GAS Web App URL dengan parameter `?action=...&callback=...` menggunakan teknik **JSONP** (cross-origin safe).
+Setiap panggilan JSONP juga menghantar `apiKey` supaya backend boleh sahkan akses melalui Script Properties.
 
 ---
 
@@ -43,16 +44,18 @@ Apabila `index.html` di GitHub Pages perlu data, ia memanggil GAS Web App URL de
 UI penuh dashboard. Mengandungi:
 - Keseluruhan UI (sidebar, hamburger menu, semua page)
 - `GAS_URL` — URL GAS `/exec` deployment
+- `API_KEY` — API key admin yang dihantar bersama setiap request GAS JSONP
 - `gasCall()` — helper JSONP untuk semua panggilan API
 - `gasGet()` / `gasPost()` — wrapper (kedua-duanya guna JSONP GET internally)
 - Pendaftaran `sw.js` untuk keupayaan PWA
+- Contact Assist dalam modal tempahan: WhatsApp, Email, dan Copy Mesej berdasarkan status semasa yang dipilih
 
 ### `Index.html` (I besar) — GAS Project
 Template lama yang diserve oleh `doGet()` apabila tiada parameter `?action`. Kini **tidak digunakan lagi** — UI sudah berpindah ke GitHub Pages. Kekalkan sebagai backup sahaja.
 
 ### `Code.gs` — GAS Project
 Backend pure API. `doGet(e)` melakukan routing:
-- Ada `?action` → jalankan fungsi, balas JSON (dengan JSONP `callback` jika ada)
+- Ada `?action` → sahkan `ADMIN_API_KEY`, jalankan fungsi, balas JSON (dengan JSONP `callback` jika ada)
 - Tiada `?action` → serve `Index.html` (legacy fallback)
 
 Fungsi API yang disokong: `getAllData`, `getAllFeedback`, `checkLogin`, `exportToCsv`, `updateStatus`, `updateStatusBatch`.
@@ -63,11 +66,13 @@ Fungsi API yang disokong: `getAllData`, `getAllFeedback`, `checkLogin`, `exportT
 
 ### `sw.js` — GitHub Pages
 Service Worker. Strategi cache:
-- Request ke `script.google.com` → **network-first**, fallback JSON error bila offline
+- Cache name: `stpu-admin-cache-v2`
+- Request ke `script.google.com` dan `script.googleusercontent.com` → **network-first**, fallback JSON error bila offline
+- Jika request offline ada parameter `callback`, fallback dibalas sebagai JSONP sah: `callback(errorObject)`
 - Fail shell (HTML/CSS/JS/icon) → **cache-first**
 
 ### `manifest.json` — GitHub Pages
-PWA manifest. `name: "STPU Admin — Dashboard Tempahan ITU"`, scope `./`.
+PWA manifest. `name: "STPU Admin — Dashboard Tempahan ITU"`, scope `./`, orientation `"any"`.
 
 ---
 
@@ -139,6 +144,17 @@ Dashboard membaca dari 6 Google Sheet tempahan dan 1 Google Sheet maklumbalas (3
 
 Email notifikasi dihantar ke pembeli secara automatik (BM + EN) setiap kali status dikemaskini secara individu. Bulk update tidak hantar email.
 
+### Hubungi Pembeli / Contact Assist
+
+Dalam modal tempahan, seksyen **"📞 Hubungi Pembeli"** membantu admin menyediakan mesej kepada pembeli:
+- **📲 WhatsApp** — buka WhatsApp dengan mesej siap diisi
+- **📧 Email** — buka email client dengan subject dan body siap diisi
+- **📋 Copy Mesej** — salin mesej ke clipboard
+
+Mesej dijana dalam Bahasa Malaysia mengikut status semasa yang dipilih dalam modal. Status `Siap Kutip` memasukkan arahan kutipan, status `Dibatalkan` meminta pembeli hubungi ITU jika ada pertanyaan, dan status lain memaklumkan bahawa status tempahan telah dikemaskini.
+
+Contact Assist adalah **frontend-only**. Ia tidak auto-send apa-apa, tidak menulis ke Sheet, dan tidak memerlukan deployment GAS.
+
 ---
 
 ## Maklumat Projek
@@ -146,3 +162,4 @@ Email notifikasi dihantar ke pembeli secara automatik (BM + EN) setiap kali stat
 - **GAS Akaun**: tempahanitu@gmail.com
 - **GitHub Repo**: https://github.com/STPUitu/admin
 - **Credentials**: disimpan dalam GAS Script Properties (bukan hardcoded)
+- **Required Script Properties**: `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_API_KEY`

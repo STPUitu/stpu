@@ -17,10 +17,23 @@
 
 URL `/exec` kekal sama selepas deploy — tiada perubahan diperlukan pada `EXEC_URL` dalam `index.html`.
 
+### Script Properties wajib
+
+Dalam GAS editor, pastikan **Project Settings → Script Properties** mengandungi:
+
+| Property | Kegunaan |
+|----------|----------|
+| `ADMIN_USERNAME` | Username login admin |
+| `ADMIN_PASSWORD` | Password login admin |
+| `ADMIN_API_KEY` | API key yang disemak oleh backend untuk semua action |
+
+`ADMIN_API_KEY` mesti sepadan dengan `API_KEY` dalam `index.html`. Jika tidak sepadan, semua API action akan ditolak dengan error akses.
+
 ### Bila wajib New Version:
 - Selepas sebarang edit pada `Code.js`
 - Selepas tambah/ubah fungsi yang dipanggil oleh `callApi()`
 - Selepas tambah scope GAS baharu (contoh: MailApp, DriveApp)
+- Selepas ubah validasi backend seperti `ADMIN_API_KEY`
 
 ### Jika tambah scope baharu:
 Scope baharu memerlukan authorization sebelum boleh deploy:
@@ -47,6 +60,22 @@ git push origin main
 ```
 
 GitHub Pages auto-update dalam masa ~1-2 minit selepas push.
+
+### Nota frontend semasa
+
+- `index.html` menghantar `API_KEY` bersama setiap request GAS JSONP
+- Service Worker cache semasa: `stpu-admin-cache-v2`
+- `sw.js` menggunakan network-first untuk `script.google.com` dan `script.googleusercontent.com`
+- Jika offline dan request JSONP mempunyai parameter `callback`, fallback dibalas sebagai `callback(errorObject)`
+- `manifest.json` menggunakan orientation `"any"`
+- Contact Assist **"📞 Hubungi Pembeli"** berada dalam modal tempahan dan hanya frontend-only:
+  - WhatsApp membuka `wa.me` dengan mesej siap diisi
+  - Email membuka `mailto:` dengan subject/body siap diisi
+  - Copy Mesej salin mesej ke clipboard
+  - Tiada auto-send
+  - Mesej ikut status semasa yang dipilih dalam modal
+
+Perubahan Contact Assist tidak memerlukan deployment GAS kerana tiada perubahan backend.
 
 ### Jika `EXEC_URL` perlu ditukar:
 Situasi ini berlaku hanya jika GAS deployment dipadam dan deployment baru dicipta (URL berubah). Kemaskini dalam `index.html`:
